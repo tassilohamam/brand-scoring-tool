@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Scoring Tool</title>
+<style>
+  :root {
+    --bg: #0b0f19;
+    --card: #111827;
+    --card2: #1a2035;
+    --border: #1f2d45;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --purple: #a855f7;
+    --orange: #f97316;
+    --teal: #14b8a6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  .layout { display: flex; min-height: 100vh; }
+
+  /* ── LEFT PANEL ── */
+  .left {
+    width: 400px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+  }
+  .left-header {
+    padding: 24px 22px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(160deg, #060d1f, #0a1628);
+    flex-shrink: 0;
+  }
+  .left-header .logo {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--blue);
+    background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);
+    display: inline-block; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+  }
+  .left-header h1 { font-size: 20px; font-weight: 800; line-height: 1.2; margin-bottom: 4px; }
+  .left-header p { font-size: 12px; color: var(--muted); }
+
+  /* ── BRAND INPUT ── */
+  .brand-input-section { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .brand-input-section label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: block; margin-bottom: 6px; }
+  .brand-name-input {
+    width: 100%; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; font-weight: 700;
+    outline: none; transition: border-color .2s;
+  }
+  .brand-name-input:focus { border-color: var(--blue); }
+  .brand-name-input::placeholder { color: var(--muted); font-weight: 400; }
+
+  .source-row { display: flex; gap: 6px; margin-top: 10px; }
+  .source-btn {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 6px; text-align: center;
+    font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer;
+    transition: all .15s;
+  }
+  .source-btn:hover { border-color: var(--blue); color: var(--text); }
+  .source-btn.active { background: rgba(59,130,246,0.12); border-color: var(--blue); color: var(--blue); }
+
+  .notes-input {
+    width: 100%; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 12px;
+    resize: none; outline: none; margin-top: 10px; line-height: 1.5;
+    transition: border-color .2s;
+  }
+  .notes-input:focus { border-color: rgba(59,130,246,0.4); }
+  .notes-input::placeholder { color: var(--muted); }
+
+  /* ── SCORE DISPLAY ── */
+  .score-display {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  .score-ring-wrap { position: relative; display: inline-block; margin-bottom: 12px; }
+  .score-ring {
+    width: 110px; height: 110px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    background: conic-gradient(var(--blue) 0deg, var(--border) 0deg);
+    transition: all .4s ease;
+    position: relative;
+  }
+  .score-ring::before {
+    content: '';
+    position: absolute;
+    inset: 10px;
+    background: var(--card);
+    border-radius: 50%;
+  }
+  .score-inner { position: relative; z-index: 1; }
+  .score-num { font-size: 32px; font-weight: 900; line-height: 1; }
+  .score-max { font-size: 11px; color: var(--muted); }
+
+  .verdict {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 800;
+    transition: all .3s;
+  }
+  .verdict-outreach { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .verdict-watchlist { background: rgba(245,158,11,0.12); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+  .verdict-skip { background: rgba(239,68,68,0.08); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+  .verdict-neutral { background: var(--card2); color: var(--muted); border: 1px solid var(--border); }
+
+  .cat-scores { display: flex; gap: 8px; margin-top: 14px; }
+  .cat-score-item { flex: 1; text-align: center; }
+  .cat-score-item .cs-val { font-size: 16px; font-weight: 800; }
+  .cat-score-item .cs-max { font-size: 10px; color: var(--muted); }
+  .cat-score-item .cs-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+
+  /* ── SAVE BUTTON ── */
+  .save-area { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .save-btn {
+    width: 100%; background: var(--blue); color: white; border: none; border-radius: 8px;
+    padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s;
+  }
+  .save-btn:hover { background: #2563eb; }
+  .save-btn:active { transform: scale(.98); }
+  .reset-btn {
+    width: 100%; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px; font-size: 12px; cursor: pointer; margin-top: 6px; transition: all .15s;
+  }
+  .reset-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── SAVED LIST ── */
+  .saved-list { padding: 16px 20px; flex: 1; overflow-y: auto; }
+  .saved-list h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+  .saved-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 6px; cursor: pointer;
+    transition: border-color .15s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .saved-item:hover { border-color: var(--blue); }
+  .saved-item .si-name { font-size: 13px; font-weight: 700; flex: 1; }
+  .saved-item .si-score { font-size: 12px; font-weight: 800; }
+  .saved-item .si-verdict { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+  .si-v-o { background: rgba(34,197,94,0.12); color: var(--green); }
+  .si-v-w { background: rgba(245,158,11,0.12); color: var(--yellow); }
+  .si-v-s { background: rgba(239,68,68,0.1); color: var(--red); }
+  .empty-state { text-align: center; padding: 24px 0; color: var(--muted); font-size: 12px; }
+
+  /* ── RIGHT PANEL ── */
+  .right { flex: 1; overflow-y: auto; padding: 24px 28px; }
+
+  .right-title { font-size: 16px; font-weight: 800; margin-bottom: 20px; color: var(--muted); }
+  .right-title span { color: var(--text); }
+
+  /* ── SCORING CATEGORIES ── */
+  .cat-block { margin-bottom: 24px; }
+  .cat-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .cat-icon { font-size: 18px; }
+  .cat-title { font-size: 15px; font-weight: 800; flex: 1; color: #ffffff; }
+  .cat-pts-display {
+    font-size: 18px; font-weight: 900;
+    min-width: 60px; text-align: right;
+    transition: all .2s;
+  }
+  .cat-pts-label { font-size: 10px; color: var(--muted); text-align: right; }
+
+  /* ── OPTION BUTTONS ── */
+  .options-grid { display: flex; flex-direction: column; gap: 7px; }
+  .option-btn {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 9px; padding: 12px 16px; cursor: pointer;
+    transition: all .15s; display: flex; align-items: center; gap: 12px;
+    text-align: left; width: 100%;
+  }
+  .option-btn:hover { border-color: rgba(59,130,246,0.4); background: rgba(59,130,246,0.04); }
+  .option-btn.selected-3 { border-color: var(--green); background: rgba(34,197,94,0.06); }
+  .option-btn.selected-2 { border-color: var(--yellow); background: rgba(245,158,11,0.06); }
+  .option-btn.selected-1 { border-color: var(--orange); background: rgba(249,115,22,0.06); }
+  .option-btn.selected-0 { border-color: var(--red); background: rgba(239,68,68,0.04); }
+  .option-btn.disabled-look { opacity: 0.4; }
+
+  .opt-check {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .option-btn.selected-3 .opt-check,
+  .option-btn.selected-2 .opt-check,
+  .option-btn.selected-1 .opt-check,
+  .option-btn.selected-0 .opt-check {
+    border-color: transparent;
+  }
+  .option-btn.selected-3 .opt-check { background: var(--green); }
+  .option-btn.selected-2 .opt-check { background: var(--yellow); }
+  .option-btn.selected-1 .opt-check { background: var(--orange); }
+  .option-btn.selected-0 .opt-check { background: var(--red); }
+
+  .opt-text { flex: 1; }
+  .opt-text .opt-label { font-size: 13px; font-weight: 600; line-height: 1.3; color: #ffffff; }
+  .opt-text .opt-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .opt-pts {
+    font-size: 14px; font-weight: 800; min-width: 32px; text-align: right;
+  }
+
+  /* ── CHECKBOXES ── */
+  .check-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 9px; padding: 12px 16px; cursor: pointer;
+    transition: all .15s; margin-bottom: 7px;
+  }
+  .check-row:hover { border-color: rgba(59,130,246,0.4); }
+  .check-row.checked { border-color: var(--teal); background: rgba(20,184,166,0.05); }
+  .cb-box {
+    width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all .15s; font-size: 11px;
+  }
+  .check-row.checked .cb-box { background: var(--teal); border-color: var(--teal); color: white; }
+  .check-row .cr-text { flex: 1; font-size: 13px; font-weight: 600; color: #ffffff; }
+  .check-row .cr-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .check-row .cr-pts { font-size: 12px; font-weight: 700; color: var(--teal); }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── NEXT ACTIONS ── */
+  .action-box {
+    border-radius: 10px; padding: 16px 18px; margin-top: 20px;
+    display: none;
+  }
+  .action-box.show { display: block; }
+  .action-box h4 { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+  .action-box ul { list-style: none; }
+  .action-box li { font-size: 13px; color: #94a3b8; padding-left: 16px; position: relative; margin-bottom: 5px; }
+  .action-box li::before { content: '→'; position: absolute; left: 0; color: var(--blue); }
+  .ab-outreach { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); }
+  .ab-watchlist { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2); }
+  .ab-skip { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.15); }
+
+  /* ── EXPORT ── */
+  .export-box {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-top: 12px; font-size: 11px; color: var(--muted);
+    font-family: monospace; white-space: pre-wrap; display: none; line-height: 1.6;
+  }
+  .copy-btn {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 14px; font-size: 11px; font-weight: 700; color: var(--muted);
+    cursor: pointer; margin-top: 8px; transition: all .15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--blue); }
+
+  /* ── SETUP BANNER ── */
+  .setup-banner {
+    background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .setup-banner.hidden { display: none; }
+  .setup-banner-icon { font-size: 18px; flex-shrink: 0; }
+  .setup-banner h4 { font-size: 13px; font-weight: 700; color: var(--yellow); margin-bottom: 4px; }
+  .setup-banner p { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  .setup-banner code {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px; padding: 1px 6px; font-size: 11px; color: var(--text); font-family: monospace;
+  }
+
+  /* ── SYNC STATUS ── */
+  .sync-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; margin-top: 6px;
+    color: var(--muted); min-height: 18px; transition: color .2s;
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
+    flex-shrink: 0; transition: background .2s;
+  }
+  .sync-status.syncing { color: var(--blue); }
+  .sync-status.syncing .sync-dot { background: var(--blue); animation: pulse 1s infinite; }
+  .sync-status.ok { color: var(--green); }
+  .sync-status.ok .sync-dot { background: var(--green); }
+  .sync-status.error { color: var(--red); }
+  .sync-status.error .sync-dot { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--green); color: #fff;
+    padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700;
+    opacity: 0; transform: translateY(10px);
+    transition: all .25s; pointer-events: none;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 800px) {
+    .layout { flex-direction: column; }
+    .left { width: 100%; height: auto; position: static; }
+    .right { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ═══════ LEFT PANEL ═══════ -->
+  <div class="left">
+    <div class="left-header">
+      <div class="logo">⚡ Brand Scoring Tool</div>
+      <h1>5-Min Brand Check</h1>
+      <p>Brand eintragen → Kriterien auswählen → Score erhalten</p>
+    </div>
+
+    <div class="brand-input-section">
+      <label>Brand Name / Handle</label>
+      <input type="text" class="brand-name-input" id="brandName" placeholder="z.B. @brandname oder Brand GmbH" oninput="updateBrandDisplay()">
+
+      <label style="margin-top: 12px;">Lead Source</label>
+      <div class="source-row">
+        <div class="source-btn" data-source="TikTok CC" onclick="selectSource(this)">🎵 TikTok CC</div>
+        <div class="source-btn" data-source="Meta Ad Library" onclick="selectSource(this)">🔵 Meta Lib</div>
+        <div class="source-btn" data-source="Instagram" onclick="selectSource(this)">📸 Instagram</div>
+      </div>
+
+      <textarea class="notes-input" id="brandNotes" placeholder="Notizen (Angebot, Besonderheiten, Ideen...)" rows="3"></textarea>
+    </div>
+
+    <!-- Score Display -->
+    <div class="score-display">
+      <div class="score-ring-wrap">
+        <div class="score-ring" id="scoreRing">
+          <div class="score-inner">
+            <div class="score-num" id="scoreNum">0</div>
+            <div class="score-max">/ 27</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="verdict verdict-neutral" id="verdictBadge">— Noch kein Score</div>
+      </div>
+      <div class="cat-scores">
+        <div class="cat-score-item">
+          <div class="cs-val" id="catScore1">0</div>
+          <div class="cs-max">/9</div>
+          <div class="cs-label">Social</div>
+        </div>
+        <div class="cat-score-item">
+          <div class="cs-val" id="catScore2">0</div>
+          <div class="cs-max">/6</div>
+          <div class="cs-label">Shop</div>
+        </div>
+        <div class="cat-score-item">
+          <div class="cs-val" id="catScore3">0</div>
+          <div class="cs-max">/6</div>
+          <div class="cs-label">Marketing</div>
+        </div>
+        <div class="cat-score-item">
+          <div class="cs-val" id="catScore4">0</div>
+          <div class="cs-max">/6</div>
+          <div class="cs-label">Produkt</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save -->
+    <div class="save-area">
+      <button class="save-btn" onclick="saveLead()">💾 Lead speichern</button>
+      <button class="reset-btn" onclick="resetForm()">✕ Zurücksetzen</button>
+      <div class="sync-status" id="syncStatus">
+        <div class="sync-dot"></div>
+        <span id="syncText">Google Sheets nicht verbunden</span>
+      </div>
+    </div>
+
+    <!-- Saved List -->
+    <div class="saved-list">
+      <h3>Gespeicherte Leads (<span id="leadCount">0</span>)</h3>
+      <div id="savedLeads">
+        <div class="empty-state">Noch keine Leads gespeichert</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ RIGHT PANEL ═══════ -->
+  <div class="right">
+    <div id="setupBanner" class="setup-banner">
+      <div class="setup-banner-icon">⚙️</div>
+      <div>
+        <h4>Google Sheets noch nicht verbunden</h4>
+        <p>Trage deine Apps Script URL in die Datei ein (Zeile mit <code>GOOGLE_SCRIPT_URL</code>), dann werden Leads automatisch ins Sheet gespeichert. <a href="https://script.google.com" target="_blank" style="color:var(--blue)">script.google.com →</a></p>
+      </div>
+    </div>
+    <div class="right-title" id="rightTitle">Brand: <span>—</span></div>
+
+    <!-- CAT 1: SOCIAL MEDIA -->
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-icon">📱</div>
+        <div>
+          <div class="cat-title">Social Media & Reichweite</div>
+        </div>
+        <div>
+          <div class="cat-pts-display" id="pts1" style="color: var(--muted);">—</div>
+          <div class="cat-pts-label">max. 9 Pkt</div>
+        </div>
+      </div>
+
+      <div class="options-grid" id="social-group-1">
+        <button class="option-btn" data-cat="1" data-sub="1a" data-pts="3" onclick="selectOption(this, '1a', 1)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">10k – 250k Follower + regelmäßige Posts</div>
+            <div class="opt-sub">Aktive Präsenz mit konsistentem Content</div>
+          </div>
+          <div class="opt-pts" style="color:var(--green)">3</div>
+        </button>
+        <button class="option-btn" data-cat="1" data-sub="1a" data-pts="2" onclick="selectOption(this, '1a', 1)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">2k – 10k Follower oder unregelmäßige Posts</div>
+            <div class="opt-sub">Vorhanden aber noch aufzubauen</div>
+          </div>
+          <div class="opt-pts" style="color:var(--yellow)">2</div>
+        </button>
+        <button class="option-btn" data-cat="1" data-sub="1a" data-pts="0" onclick="selectOption(this, '1a', 1)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Unter 2k / totes Profil / nicht auffindbar</div>
+            <div class="opt-sub">Kaum Präsenz erkennbar</div>
+          </div>
+          <div class="opt-pts" style="color:var(--red)">0</div>
+        </button>
+      </div>
+
+      <div style="height:8px;"></div>
+
+      <div class="options-grid" id="social-group-2">
+        <button class="option-btn" data-cat="1" data-sub="1b" data-pts="3" onclick="selectOption(this, '1b', 1)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Gutes Engagement – aktive Community</div>
+            <div class="opt-sub">Kommentare, echte Interaktion, keine Bots</div>
+          </div>
+          <div class="opt-pts" style="color:var(--green)">3</div>
+        </button>
+        <button class="option-btn" data-cat="1" data-sub="1b" data-pts="1" onclick="selectOption(this, '1b', 1)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Schwaches Engagement</div>
+            <div class="opt-sub">Wenig Reaktionen trotz Followern</div>
+          </div>
+          <div class="opt-pts" style="color:var(--orange)">1</div>
+        </button>
+        <button class="option-btn" data-cat="1" data-sub="1b" data-pts="0" onclick="selectOption(this, '1b', 1)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Kein Engagement / verdächtig</div>
+            <div class="opt-sub">Mögliche Fake-Follower</div>
+          </div>
+          <div class="opt-pts" style="color:var(--red)">0</div>
+        </button>
+      </div>
+
+      <div style="height:8px;"></div>
+
+      <div class="check-row" id="check-reels" onclick="toggleCheck(this, 1, 3)">
+        <div class="cb-box">✓</div>
+        <div>
+          <div class="cr-text">Reels / TikTok Präsenz vorhanden</div>
+          <div class="cr-sub">Aktiv auf Video-Plattformen</div>
+        </div>
+        <div class="cr-pts">+3</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- CAT 2: SHOP -->
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-icon">🏪</div>
+        <div>
+          <div class="cat-title">Shop / Website</div>
+        </div>
+        <div>
+          <div class="cat-pts-display" id="pts2" style="color: var(--muted);">—</div>
+          <div class="cat-pts-label">max. 6 Pkt</div>
+        </div>
+      </div>
+
+      <div class="options-grid">
+        <button class="option-btn" data-cat="2" data-sub="2a" data-pts="3" onclick="selectOption(this, '2a', 2)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Cleaner, professioneller Shop</div>
+            <div class="opt-sub">Gutes Design, klare Navigation, Social Proof vorhanden</div>
+          </div>
+          <div class="opt-pts" style="color:var(--green)">3</div>
+        </button>
+        <button class="option-btn" data-cat="2" data-sub="2a" data-pts="2" onclick="selectOption(this, '2a', 2)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Mittelmäßig – verbesserungswürdig</div>
+            <div class="opt-sub">Shop existiert aber hat klare Schwächen</div>
+          </div>
+          <div class="opt-pts" style="color:var(--yellow)">2</div>
+        </button>
+        <button class="option-btn" data-cat="2" data-sub="2a" data-pts="1" onclick="selectOption(this, '2a', 2)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Schwacher Shop / keine Conversion-Infra</div>
+            <div class="opt-sub">Würde Ad-Traffic verbrennen</div>
+          </div>
+          <div class="opt-pts" style="color:var(--orange)">1</div>
+        </button>
+        <button class="option-btn" data-cat="2" data-sub="2a" data-pts="0" onclick="selectOption(this, '2a', 2)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Kein Shop / kein Angebot auffindbar</div>
+            <div class="opt-sub">Kein Ort wohin man tracken könnte</div>
+          </div>
+          <div class="opt-pts" style="color:var(--red)">0</div>
+        </button>
+      </div>
+
+      <div style="height: 8px;"></div>
+
+      <div class="check-row" id="check-aov" onclick="toggleCheck(this, 2, 3)">
+        <div class="cb-box">✓</div>
+        <div>
+          <div class="cr-text">Durchschnittlicher Produktpreis &gt; 60€</div>
+          <div class="cr-sub">Genug Marge für profitable Ads</div>
+        </div>
+        <div class="cr-pts">+3</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- CAT 3: MARKETING -->
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-icon">📣</div>
+        <div>
+          <div class="cat-title">Marketing-Aktivität</div>
+        </div>
+        <div>
+          <div class="cat-pts-display" id="pts3" style="color: var(--muted);">—</div>
+          <div class="cat-pts-label">max. 6 Pkt</div>
+        </div>
+      </div>
+
+      <div class="options-grid">
+        <button class="option-btn" data-cat="3" data-sub="3a" data-pts="3" onclick="selectOption(this, '3a', 3)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Schaltet aktiv Meta Ads (Ad Library check)</div>
+            <div class="opt-sub">Bewiesen – zahlt bereits für Traffic</div>
+          </div>
+          <div class="opt-pts" style="color:var(--green)">3</div>
+        </button>
+        <button class="option-btn" data-cat="3" data-sub="3a" data-pts="2" onclick="selectOption(this, '3a', 3)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">TikTok Ads oder Influencer-Kooperationen</div>
+            <div class="opt-sub">Zahlt für Marketing, aber nicht auf Meta</div>
+          </div>
+          <div class="opt-pts" style="color:var(--yellow)">2</div>
+        </button>
+        <button class="option-btn" data-cat="3" data-sub="3a" data-pts="1" onclick="selectOption(this, '3a', 3)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Nur organisch – kein Paid Marketing</div>
+            <div class="opt-sub">Noch keine Bereitschaft zu investieren</div>
+          </div>
+          <div class="opt-pts" style="color:var(--orange)">1</div>
+        </button>
+        <button class="option-btn" data-cat="3" data-sub="3a" data-pts="0" onclick="selectOption(this, '3a', 3)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Gar kein Marketing erkennbar</div>
+            <div class="opt-sub">Kein Signal für Investitionsbereitschaft</div>
+          </div>
+          <div class="opt-pts" style="color:var(--red)">0</div>
+        </button>
+      </div>
+
+      <div style="height:8px;"></div>
+
+      <div class="check-row" id="check-creatives" onclick="toggleCheck(this, 3, 3)">
+        <div class="cb-box">✓</div>
+        <div>
+          <div class="cr-text">Creatives sind sichtbar schwach / verbesserbar</div>
+          <div class="cr-sub">Euer konkreter Hebel – klarer Pitch-Aufhänger</div>
+        </div>
+        <div class="cr-pts">+3</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- CAT 4: PRODUKT -->
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-icon">🚀</div>
+        <div>
+          <div class="cat-title">Produkt-Potenzial</div>
+        </div>
+        <div>
+          <div class="cat-pts-display" id="pts4" style="color: var(--muted);">—</div>
+          <div class="cat-pts-label">max. 6 Pkt</div>
+        </div>
+      </div>
+
+      <div class="options-grid">
+        <button class="option-btn" data-cat="4" data-sub="4a" data-pts="3" onclick="selectOption(this, '4a', 4)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Gehyptes / trendiges Produkt</div>
+            <div class="opt-sub">Markt-Momentum vorhanden – leicht zu skalieren</div>
+          </div>
+          <div class="opt-pts" style="color:var(--green)">3</div>
+        </button>
+        <button class="option-btn" data-cat="4" data-sub="4a" data-pts="2" onclick="selectOption(this, '4a', 4)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Solides Produkt mit klarem USP</div>
+            <div class="opt-sub">Gut positioniert, aber kein Hype</div>
+          </div>
+          <div class="opt-pts" style="color:var(--yellow)">2</div>
+        </button>
+        <button class="option-btn" data-cat="4" data-sub="4a" data-pts="1" onclick="selectOption(this, '4a', 4)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Generisches Produkt / viel Wettbewerb</div>
+            <div class="opt-sub">Schwieriger zu skalieren</div>
+          </div>
+          <div class="opt-pts" style="color:var(--orange)">1</div>
+        </button>
+        <button class="option-btn" data-cat="4" data-sub="4a" data-pts="0" onclick="selectOption(this, '4a', 4)">
+          <div class="opt-check">✓</div>
+          <div class="opt-text">
+            <div class="opt-label">Commodity / kein erkennbarer USP</div>
+            <div class="opt-sub">Kaum Differenzierung möglich</div>
+          </div>
+          <div class="opt-pts" style="color:var(--red)">0</div>
+        </button>
+      </div>
+
+      <div style="height:8px;"></div>
+
+      <div class="check-row" id="check-repeat" onclick="toggleCheck(this, 4, 2)">
+        <div class="cb-box">✓</div>
+        <div>
+          <div class="cr-text">Wiederholungskauf möglich (Abo / Consumable)</div>
+          <div class="cr-sub">LTV erhöht Profitabilität der Ads</div>
+        </div>
+        <div class="cr-pts">+2</div>
+      </div>
+
+      <div class="check-row" id="check-margin" onclick="toggleCheck(this, 4, 1)">
+        <div class="cb-box">✓</div>
+        <div>
+          <div class="cr-text">Hohe Marge erkennbar (&gt;40% Rohertrag)</div>
+          <div class="cr-sub">Genug Spielraum für Revenue-Share Modell</div>
+        </div>
+        <div class="cr-pts">+1</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- BONUS: GRÜNDER -->
+    <div class="cat-block">
+      <div class="cat-header">
+        <div class="cat-icon">👤</div>
+        <div class="cat-title">Gründer-Check (Bonus)</div>
+      </div>
+      <div class="check-row" id="check-founder" onclick="toggleCheck(this, 0, 0)">
+        <div class="cb-box">✓</div>
+        <div>
+          <div class="cr-text">Gründer auf Instagram/LinkedIn sichtbar & aktiv</div>
+          <div class="cr-sub">Direktnachricht möglich → höhere Antwortrate</div>
+        </div>
+        <div class="cr-pts" style="color:var(--purple)">Bonus</div>
+      </div>
+    </div>
+
+    <!-- VERDICT & ACTIONS -->
+    <div id="actionBox-outreach" class="action-box ab-outreach">
+      <h4 style="color:var(--green)">🟢 Empfehlung: Sofort Outreach starten</h4>
+      <ul>
+        <li>Brand ins CRM eintragen mit Status "Outreach"</li>
+        <li>Warm-Up: 2–3 Posts liken, 1 echter Kommentar</li>
+        <li>Audit vorbereiten (60–90 Min) – spezifisch auf diese Brand</li>
+        <li>Ersten DM in 1–2 Tagen schicken</li>
+        <li>Falls Gründer identifiziert: direkt am Gründer-Profil ansetzen</li>
+      </ul>
+    </div>
+
+    <div id="actionBox-watchlist" class="action-box ab-watchlist">
+      <h4 style="color:var(--yellow)">🟡 Empfehlung: Watchlist</h4>
+      <ul>
+        <li>Brand ins CRM mit Status "Watchlist" eintragen</li>
+        <li>In 2–3 Wochen erneut prüfen</li>
+        <li>Auf Instagram folgen – Entwicklung beobachten</li>
+        <li>Prüfen: Welche Kriterien fehlen noch für Outreach?</li>
+      </ul>
+    </div>
+
+    <div id="actionBox-skip" class="action-box ab-skip">
+      <h4 style="color:var(--red)">🔴 Empfehlung: Skip</h4>
+      <ul>
+        <li>Brand nicht weiterverfolgen</li>
+        <li>Zeit in qualifiziertere Prospects investieren</li>
+        <li>Ggf. in 2 Monaten erneut prüfen falls sich Brand entwickelt</li>
+      </ul>
+    </div>
+
+    <!-- CRM EXPORT -->
+    <div id="exportWrap" style="margin-top: 16px; display: none;">
+      <button class="copy-btn" onclick="copyToClipboard()">📋 CRM-Eintrag kopieren</button>
+      <div class="export-box" id="exportBox"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Gespeichert!</div>
+
+<script>
+  // ─── GOOGLE SHEETS CONFIG ───────────────────────────────────────────────────
+  // Trage hier deine Apps Script Web App URL ein (nach dem Deploy):
+  const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBZWyURuUQr2OPuz_S9DbDoI9WRLGPJZhOsDTsUKBxrfDar1CltuW-P8BPuxA2vvdK/exec';
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // Hide setup banner if URL is configured
+  if (GOOGLE_SCRIPT_URL) {
+    document.getElementById('setupBanner').classList.add('hidden');
+    setSyncStatus('idle', 'Bereit – wird beim Speichern gesynct');
+  }
+
+  function setSyncStatus(state, text) {
+    const el = document.getElementById('syncStatus');
+    const txt = document.getElementById('syncText');
+    el.className = 'sync-status' + (state !== 'idle' ? ' ' + state : '');
+    txt.textContent = text;
+  }
+
+  async function syncToSheets(lead, catScores) {
+    if (!GOOGLE_SCRIPT_URL) return;
+    setSyncStatus('syncing', 'Wird gespeichert…');
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          datum: lead.date,
+          brand: lead.name,
+          score: lead.score,
+          verdict: lead.verdict,
+          source: lead.source || '—',
+          cat1: catScores[0],
+          cat2: catScores[1],
+          cat3: catScores[2],
+          cat4: catScores[3],
+          notes: lead.notes || '—',
+        }),
+      });
+      setSyncStatus('ok', '✓ In Google Sheets gespeichert');
+      setTimeout(() => setSyncStatus('idle', 'Bereit – wird beim Speichern gesynct'), 3000);
+    } catch (err) {
+      setSyncStatus('error', '✗ Sync fehlgeschlagen – nur lokal gespeichert');
+      setTimeout(() => setSyncStatus('idle', 'Bereit – wird beim Speichern gesynct'), 4000);
+    }
+  }
+
+  // ─── STATE ───
+  const state = {
+    scores: {
+      '1a': 0, '1b': 0,
+      '2a': 0,
+      '3a': 0,
+      '4a': 0,
+    },
+    checks: {
+      'check-reels':    { cat: 1, pts: 3, active: false },
+      'check-aov':      { cat: 2, pts: 3, active: false },
+      'check-creatives':{ cat: 3, pts: 3, active: false },
+      'check-repeat':   { cat: 4, pts: 2, active: false },
+      'check-margin':   { cat: 4, pts: 1, active: false },
+      'check-founder':  { cat: 0, pts: 0, active: false },
+    },
+    source: '',
+    leads: JSON.parse(localStorage.getItem('bst_leads') || '[]'),
+    editingId: null,
+  };
+
+  // track which radio group per cat
+  const radioGroups = {
+    '1a': null, '1b': null,
+    '2a': null,
+    '3a': null,
+    '4a': null,
+  };
+
+  function selectOption(btn, subKey, cat) {
+    // deselect others in same subKey group
+    document.querySelectorAll(`[data-sub="${subKey}"]`).forEach(b => {
+      b.className = 'option-btn';
+    });
+    // select this
+    const pts = parseInt(btn.dataset.pts);
+    const cls = pts === 3 ? 'selected-3' : pts === 2 ? 'selected-2' : pts === 1 ? 'selected-1' : 'selected-0';
+    btn.className = `option-btn ${cls}`;
+    state.scores[subKey] = pts;
+    updateScore();
+  }
+
+  function toggleCheck(el, cat, pts) {
+    const id = el.id;
+    const ch = state.checks[id];
+    ch.active = !ch.active;
+    el.classList.toggle('checked', ch.active);
+    updateScore();
+  }
+
+  function selectSource(btn) {
+    document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.source = btn.dataset.source;
+  }
+
+  function updateBrandDisplay() {
+    const name = document.getElementById('brandName').value || '—';
+    document.getElementById('rightTitle').innerHTML = `Brand: <span>${name}</span>`;
+  }
+
+  function getCatScore(cat) {
+    let total = 0;
+    // radio scores
+    for (const [key, pts] of Object.entries(state.scores)) {
+      const catNum = parseInt(key[0]);
+      if (catNum === cat) total += pts;
+    }
+    // check scores
+    for (const [id, ch] of Object.entries(state.checks)) {
+      if (ch.cat === cat && ch.active) total += ch.pts;
+    }
+    return total;
+  }
+
+  function updateScore() {
+    const c1 = getCatScore(1);
+    const c2 = getCatScore(2);
+    const c3 = getCatScore(3);
+    const c4 = getCatScore(4);
+    const total = c1 + c2 + c3 + c4;
+
+    // caps
+    const capped1 = Math.min(c1, 9);
+    const capped2 = Math.min(c2, 6);
+    const capped3 = Math.min(c3, 6);
+    const capped4 = Math.min(c4, 6);
+    const cappedTotal = Math.min(capped1 + capped2 + capped3 + capped4, 27);
+
+    document.getElementById('scoreNum').textContent = cappedTotal;
+    document.getElementById('catScore1').textContent = capped1;
+    document.getElementById('catScore2').textContent = capped2;
+    document.getElementById('catScore3').textContent = capped3;
+    document.getElementById('catScore4').textContent = capped4;
+
+    // cat displays
+    const ptsEls = ['pts1','pts2','pts3','pts4'];
+    const catVals = [capped1, capped2, capped3, capped4];
+    const catMaxes = [9, 6, 6, 6];
+    catVals.forEach((v, i) => {
+      const el = document.getElementById(ptsEls[i]);
+      el.textContent = `${v} / ${catMaxes[i]}`;
+      el.style.color = v === 0 ? 'var(--muted)' : v >= catMaxes[i] * 0.6 ? 'var(--green)' : v >= catMaxes[i] * 0.3 ? 'var(--yellow)' : 'var(--red)';
+    });
+
+    // ring
+    const pct = cappedTotal / 27;
+    const deg = Math.round(pct * 360);
+    let ringColor = 'var(--muted)';
+    if (cappedTotal >= 18) ringColor = 'var(--green)';
+    else if (cappedTotal >= 10) ringColor = 'var(--yellow)';
+    else if (cappedTotal > 0) ringColor = 'var(--red)';
+    document.getElementById('scoreRing').style.background =
+      `conic-gradient(${ringColor} ${deg}deg, var(--border) ${deg}deg)`;
+
+    // verdict
+    const vEl = document.getElementById('verdictBadge');
+    document.getElementById('actionBox-outreach').classList.remove('show');
+    document.getElementById('actionBox-watchlist').classList.remove('show');
+    document.getElementById('actionBox-skip').classList.remove('show');
+
+    if (cappedTotal === 0) {
+      vEl.className = 'verdict verdict-neutral';
+      vEl.textContent = '— Noch kein Score';
+    } else if (cappedTotal >= 18) {
+      vEl.className = 'verdict verdict-outreach';
+      vEl.textContent = '🟢 Outreach starten';
+      document.getElementById('actionBox-outreach').classList.add('show');
+    } else if (cappedTotal >= 10) {
+      vEl.className = 'verdict verdict-watchlist';
+      vEl.textContent = '🟡 Watchlist';
+      document.getElementById('actionBox-watchlist').classList.add('show');
+    } else {
+      vEl.className = 'verdict verdict-skip';
+      vEl.textContent = '🔴 Skip';
+      document.getElementById('actionBox-skip').classList.add('show');
+    }
+
+    // export
+    updateExport(cappedTotal);
+  }
+
+  function getVerdict(score) {
+    if (score >= 18) return 'Outreach';
+    if (score >= 10) return 'Watchlist';
+    return 'Skip';
+  }
+
+  function updateExport(total) {
+    const name = document.getElementById('brandName').value || '—';
+    const notes = document.getElementById('brandNotes').value || '—';
+    const date = new Date().toLocaleDateString('de-DE');
+    const verdict = getVerdict(total);
+    const founderCheck = state.checks['check-founder'].active ? '✓ Ja' : '—';
+
+    const text =
+`BRAND: ${name}
+DATUM: ${date}
+LEAD SOURCE: ${state.source || '—'}
+SCORE: ${total}/27 → ${verdict}
+GRÜNDER-CHECK: ${founderCheck}
+NOTIZEN: ${notes}`;
+
+    document.getElementById('exportBox').textContent = text;
+    document.getElementById('exportWrap').style.display = 'block';
+  }
+
+  function copyToClipboard() {
+    const text = document.getElementById('exportBox').textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('📋 Kopiert!'));
+  }
+
+  function saveLead() {
+    const name = document.getElementById('brandName').value;
+    if (!name.trim()) { showToast('⚠️ Bitte Brand-Namen eingeben'); return; }
+
+    const scoreNum = parseInt(document.getElementById('scoreNum').textContent);
+    const verdict = getVerdict(scoreNum);
+    const notes = document.getElementById('brandNotes').value;
+
+    const catScores = [
+      parseInt(document.getElementById('catScore1').textContent),
+      parseInt(document.getElementById('catScore2').textContent),
+      parseInt(document.getElementById('catScore3').textContent),
+      parseInt(document.getElementById('catScore4').textContent),
+    ];
+
+    const lead = {
+      id: Date.now(),
+      name,
+      score: scoreNum,
+      verdict,
+      source: state.source,
+      notes,
+      date: new Date().toLocaleDateString('de-DE'),
+    };
+
+    state.leads.unshift(lead);
+    localStorage.setItem('bst_leads', JSON.stringify(state.leads));
+    renderLeads();
+    showToast('✓ Lead gespeichert!');
+    syncToSheets(lead, catScores);
+  }
+
+  function renderLeads() {
+    const container = document.getElementById('savedLeads');
+    document.getElementById('leadCount').textContent = state.leads.length;
+
+    if (state.leads.length === 0) {
+      container.innerHTML = '<div class="empty-state">Noch keine Leads gespeichert</div>';
+      return;
+    }
+
+    container.innerHTML = state.leads.map(l => {
+      const vc = l.verdict === 'Outreach' ? 'si-v-o' : l.verdict === 'Watchlist' ? 'si-v-w' : 'si-v-s';
+      const sc = l.verdict === 'Outreach' ? 'var(--green)' : l.verdict === 'Watchlist' ? 'var(--yellow)' : 'var(--red)';
+      return `<div class="saved-item" onclick="loadLead(${l.id})">
+        <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+          <div class="si-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.name}</div>
+          <div style="font-size:10px;color:var(--muted)">${l.date} · ${l.source || '—'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="si-score" style="color:${sc}">${l.score}</span>
+          <span class="si-verdict ${vc}">${l.verdict}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function loadLead(id) {
+    const lead = state.leads.find(l => l.id === id);
+    if (!lead) return;
+    document.getElementById('brandName').value = lead.name;
+    document.getElementById('brandNotes').value = lead.notes || '';
+    updateBrandDisplay();
+    // Can't restore selections perfectly but at least show the name/notes
+    showToast(`📂 ${lead.name} geladen`);
+  }
+
+  function resetForm() {
+    document.getElementById('brandName').value = '';
+    document.getElementById('brandNotes').value = '';
+    updateBrandDisplay();
+    state.source = '';
+    document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
+
+    // reset radio options
+    document.querySelectorAll('.option-btn').forEach(b => b.className = 'option-btn');
+    for (const key in state.scores) state.scores[key] = 0;
+
+    // reset checkboxes
+    for (const [id, ch] of Object.entries(state.checks)) {
+      ch.active = false;
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('checked');
+    }
+
+    document.getElementById('exportWrap').style.display = 'none';
+    updateScore();
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // Init
+  renderLeads();
+  updateScore();
+</script>
+</body>
+</html>
